@@ -17,6 +17,7 @@ interface Coin {
 
 export default function Top20Screener() {
   const [coins, setCoins] = useState<Coin[]>([]);
+  const [sentiment, setSentiment] = useState({ value: '0', classification: 'Loading...' });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,6 +30,14 @@ export default function Top20Screener() {
         );
         const data = await response.json();
         setCoins(data);
+
+        // Fetch Fear & Greed Index
+        const fngRes = await fetch('https://api.alternative.me/fng/');
+        const fngJson = await fngRes.json();
+        setSentiment({
+          value: fngJson.data[0].value,
+          classification: fngJson.data[0].value_classification
+        });
       } catch (error) {
         console.error("Error fetching market data:", error);
       } finally {
@@ -55,12 +64,36 @@ export default function Top20Screener() {
     );
   };
 
+    const sentimentValue = parseInt(sentiment.value);
+  let sentimentColor = 'text-gray-400';
+  if (sentimentValue <= 25) sentimentColor = 'text-blue-400'; // Extreme Fear = Buy Zone
+  if (sentimentValue > 25 && sentimentValue <= 45) sentimentColor = 'text-red-400'; // Fear
+  if (sentimentValue >= 55 && sentimentValue < 75) sentimentColor = 'text-green-400'; // Greed
+  if (sentimentValue >= 75) sentimentColor = 'text-orange-400'; // Extreme Greed = Sell Zone
+
+
   return (
     <main className="min-h-screen bg-gray-950 text-white p-8 font-sans">
       <div className="max-w-6xl mx-auto">
         
         <h1 className="text-4xl font-bold mb-2">Market Screener</h1>
-        <p className="text-gray-400 mb-8">Compare trends across the Top 20 assets by Market Cap.</p>
+        <p className="text-gray-400 mb-6">Compare trends across the Top 20 assets by Market Cap.</p>
+
+        {/* Market Sentiment (Fear & Greed) Card */}
+        <div className="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow-lg mb-8 max-w-sm">
+           <h2 className="text-gray-400 text-sm uppercase font-bold tracking-wider">Overall Market Mood (0-100)</h2>
+           <div className="flex items-baseline gap-2 mt-2">
+              <p className={`text-4xl font-bold ${sentimentColor}`}>
+                {sentiment.value}
+              </p>
+              <p className={`text-lg font-medium capitalize ${sentimentColor}`}>
+                {sentiment.classification.toLowerCase()}
+              </p>
+           </div>
+           <p className="text-xs text-gray-500 mt-2">
+              {sentimentValue <= 25 ? '💡 Historic Buy Zone' : sentimentValue >= 75 ? '⚠️ Overheated - Take Profits' : '⚖️ Market is Neutral'}
+           </p>
+        </div>
 
         {/* The Comparison Table */}
         <div className="bg-gray-900 rounded-xl border border-gray-800 shadow-lg overflow-x-auto">
